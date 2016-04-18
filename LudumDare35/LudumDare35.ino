@@ -36,8 +36,14 @@ void loop()
   elapsedTime = currentTime - lastTime - lastDelay;
   lastTime = currentTime;
 
-//  color.longColor = 0x202020FF;
-//  drawRect(0, 0, 16, 16, color);
+  if (count++ == 30)
+  {
+    count = 0;
+    rotatePieceCCW(testPiece);
+  }
+
+  color.longColor = 0x000000FF;
+  drawRect(0, 0, 16, 16, color);
   drawPiece(RGB, testPiece);
   RGB_update(-1,0,0,0);//LED#, RED, GREEN, BLUE
   lastDelay = (elapsedTime > DELAY) ? 0 : (DELAY - elapsedTime);

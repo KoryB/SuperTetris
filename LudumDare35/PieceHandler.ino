@@ -265,6 +265,24 @@ Piece * makeRandom(char x, char y, Piece * piece)
   }
 }
 
+byte rotatePieceCW(Piece * piece)
+{
+  piece->index++;
+  if (piece->index >= piece->numFrames)
+  {
+    piece->index = 0;
+  }
+}
+
+byte rotatePieceCCW(Piece * piece)
+{
+  piece->index--;
+  if (piece->index < 0)
+  {
+    piece->index = piece->numFrames - 1;
+  }
+}
+
 void drawPiece(byte * pixels, Piece * piece)
 {
   static char c, r, x, y;
@@ -275,7 +293,7 @@ void drawPiece(byte * pixels, Piece * piece)
   {
     for (y = piece->oy + piece->y, r = 0; y < piece->oy + piece->y + piece->frameHeight; y++, r++)
     {
-      if (piece->frames[r*piece->frameWidth + c])
+      if (piece->frames[piece->index*piece->frameWidth*piece->frameHeight + r*piece->frameWidth + c])
       {
         setPixel(x, y, color);
       }
