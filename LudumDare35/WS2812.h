@@ -1,4 +1,7 @@
 //VARIABLES AND DEFINES HERE - NEEDED BY THE WS2812 DRIVER CODE
+#ifndef _WS2812_H_
+#define _WS2812_H_
+
 #define WS2812_pin 53 // only digital pin 8 works right now
 #define NUM_LEDS (256)// total number of RGB LEDs
 #define NO_BLEND 0
@@ -66,4 +69,6 @@ void setColor(union Color * color, byte r, byte g, byte b);
 void drawRect(byte x, byte y, byte w, byte h, union Color c);
 void drawCircle(byte x, byte y, byte d, union Color c);
 void blit(byte * ar, byte x, byte y, byte w, byte h);
+
+#endif
 

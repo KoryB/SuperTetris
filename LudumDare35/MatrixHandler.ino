@@ -1,21 +1,76 @@
 #include "Pieces.h"
+#include "Matrix.h"
+#include <stdlib.h>
 
-#define MATRIX_HEIGHT 10
-#define MATRIX_WIDTH 12
-
-typedef struct Matrix
+byte checkLanding(struct Matrix * matrix, Piece * piece)
 {
-  byte matrix[MATRIX_HEIGHT][MATRIX_WIDTH];
+  char c, r, x, y;
   
-  char x;
-  char y;
-} Matrix;
 
-byte checkPieceAllowed(Matrix * matrix, Piece * piece); //Returns 1 if not blocked, assumes origin is this matrix's pos
-byte clearRows(Piece * piece); //The piece last placed
-void storePiece(Piece * piece);
+  Serial.println(piece->y, DEC);
+  c = 0;
+  for (x = piece->x; x < piece->x + piece->frameWidth; x++)
+  {
+    r = 0;
+    for (y = piece->y; y < piece->y + piece->frameHeight; y++)
+    {
+      if (isLanding(matrix, x, y) && piece->frames[r*piece->frameWidth + c])
+      {
+        return 1;
+      }
+      r++;
+    }
+    c++;
+  }
+  return 0;
+}
 
-byte checkPieceAllowed(Matrix * matrix, Piece * piece)
+byte isLanding(struct Matrix * matrix, char c, char r)
+{
+  if (r >= MATRIX_HEIGHT)
+  {
+    Serial.println("Landing!");
+    return 1;
+  }
+
+  return matrix->matrix[r][c];
+}
+
+byte isValidPosition(Matrix * matrix, char x, char y)
+{
+  if (x < MATRIX_X || x >= MATRIX_X + MATRIX_WIDTH)
+  {
+    return 0;
+  }
+  return 1;
+}
+
+byte updateMatrix(Matrix * matrix, Piece * piece, unsigned long elapsedTime)
+{
+  char r, c, x, y;
+  //Check inputs to move
+  //Check side collisions
+  //Check drop
+  matrix->currentTime += elapsedTime;
+
+  if (matrix->currentTime >= matrix->normalTime)
+  {
+    matrix->currentTime = 0;
+    
+    piece->y += 1;
+    
+    if (checkLanding(matrix, piece))
+    {
+      Serial.println("Landed!");
+      piece->y -= 1;
+      storePiece(matrix, piece);
+    }
+  }
+  //Check fall store
+  //Check clear lines
+}
+
+void storePiece(Matrix * matrix, Piece * piece)
 {
   char c, r, x, y;
   
@@ -23,13 +78,57 @@ byte checkPieceAllowed(Matrix * matrix, Piece * piece)
   {
     for (y = piece->y, r = 0; y < piece->y + piece->frameHeight; y++, r++)
     {
-      if (piece->frames[r*piece->frameWidth + c] )
+      if (piece->frames[r*piece->frameWidth + c])
       {
-        setPixel(x, y, color);
+        matrix->matrix[y][x] = 1;
       }
     }
   }
-
-  return 1;
 }
+
+Matrix * makeMatrix(Color bgColor)
+{
+  Matrix * matrix = (Matrix * ) calloc(1, sizeof(Matrix));
+  Color color;
+
+  color.longColor = 0x202020FF;
+  
+  matrix->bgColor = bgColor;
+  matrix->pieceColor = color;
+  matrix->fastTime = 500;
+  matrix->normalTime = 500;
+
+  return matrix;
+}
+
+void drawMatrix(byte * pixels, Matrix * matrix)
+{
+  char x, y;
+
+  Color color;
+  color.longColor = 0x202020FF;
+
+  drawRect(0, 0, 16, 16, color);
+
+//  for (x = MATRIX_X; x < MATRIX_X + MATRIX_WIDTH; x++)
+//  {
+//    for (y = MATRIX_Y; y < MATRIX_Y + MATRIX_HEIGHT; y++)
+//    {
+//      if (matrix->matrix[y - MATRIX_Y][x - MATRIX_X])
+//      {
+//        setPixel(x, y, matrix->pieceColor);
+//      }
+//    }
+//  }
+}
+
+
+
+
+
+
+
+
+
+
 
