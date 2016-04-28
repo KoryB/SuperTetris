@@ -1,31 +1,54 @@
 #include "Pieces.h"
+#include "WS2812.h"
 #include "Matrix.h"
 #include <stdlib.h>
 
-byte checkLanding(struct Matrix * matrix, Piece * piece)
+Matrix::Matrix(Color bgColor)
+{
+  char r, c;
+  Color color;
+
+  color.longColor = 0x202020FF;
+  
+  bgColor = bgColor;
+  pieceColor = color;
+  fastTime = DELAY;
+  normalTime = DELAY * 6;
+  currentMoveDelay = 0;
+
+  dropTime = normalTime;
+
+  for (c = 0; c < MATRIX_WIDTH; c++)
+  {
+    for (r = 0; r < MATRIX_HEIGHT; r++)
+    {
+      matrix[r][c] = 0;
+    }
+  }
+
+  currentPiece = makeRandomPiece(MATRIX_WIDTH / 2, 0, MATRIX_X, MATRIX_Y);
+  nextPiece = makeRandomPiece(MATRIX_WIDTH / 2, 0, MATRIX_X, MATRIX_Y);
+}
+
+byte Matrix::checkLanding(Piece * piece)
 {
   char c, r, x, y;
   
-
-  Serial.println(piece->y, DEC);
-  c = 0;
-  for (x = piece->x; x < piece->x + piece->frameWidth; x++)
+  for (x = piece->x, c = 0; x < piece->x + piece->frameWidth; x++, c++)
   {
     r = 0;
-    for (y = piece->y; y < piece->y + piece->frameHeight; y++)
+    for (y = piece->y, r=0; y < piece->y + piece->frameHeight; y++, r++)
     {
-      if (isLanding(matrix, x, y) && piece->frames[r*piece->frameWidth + c])
+      if (isLanding(x, y) && piece->frames[piece->index*piece->frameWidth*piece->frameHeight + r*piece->frameWidth + c])
       {
         return 1;
       }
-      r++;
     }
-    c++;
   }
   return 0;
 }
 
-byte isLanding(struct Matrix * matrix, char c, char r)
+byte Matrix::isLanding(char c, char r)
 {
   if (r >= MATRIX_HEIGHT)
   {
@@ -33,93 +56,194 @@ byte isLanding(struct Matrix * matrix, char c, char r)
     return 1;
   }
 
-  return matrix->matrix[r][c];
+  return matrix[r][c];
 }
 
-byte isValidPosition(Matrix * matrix, char x, char y)
-{
-  if (x < MATRIX_X || x >= MATRIX_X + MATRIX_WIDTH)
-  {
-    return 0;
-  }
-  return 1;
-}
-
-byte updateMatrix(Matrix * matrix, Piece * piece, unsigned long elapsedTime)
-{
-  char r, c, x, y;
-  //Check inputs to move
-  //Check side collisions
-  //Check drop
-  matrix->currentTime += elapsedTime;
-
-  if (matrix->currentTime >= matrix->normalTime)
-  {
-    matrix->currentTime = 0;
-    
-    piece->y += 1;
-    
-    if (checkLanding(matrix, piece))
-    {
-      Serial.println("Landed!");
-      piece->y -= 1;
-      storePiece(matrix, piece);
-    }
-  }
-  //Check fall store
-  //Check clear lines
-}
-
-void storePiece(Matrix * matrix, Piece * piece)
+byte Matrix::checkSideCollisions()
 {
   char c, r, x, y;
   
-  for (x = piece->x, c = 0; x < piece->x + piece->frameWidth; x++, c++)
+  for (x = currentPiece->x, c = 0; x < currentPiece->x + currentPiece->frameWidth; x++, c++)
   {
-    for (y = piece->y, r = 0; y < piece->y + piece->frameHeight; y++, r++)
+    for (y = currentPiece->y, r=0; y < currentPiece->y + currentPiece->frameHeight; y++, r++)
     {
-      if (piece->frames[r*piece->frameWidth + c])
+      if (isFilled(x, y) && currentPiece->frames[currentPiece->index*currentPiece->frameWidth*currentPiece->frameHeight + r*currentPiece->frameWidth + c])
       {
-        matrix->matrix[y][x] = 1;
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
+byte Matrix::isFilled(char x, char y)
+{
+  if (x < 0 || x >= MATRIX_WIDTH || matrix[y][x])
+  {
+    return 1;
+  }
+  return 0;
+}
+
+byte Matrix::update(unsigned long elapsedTime)
+{
+  char r, c, x, y, dx=0, rotated=0;
+  //Check inputs to move
+  if (redPressed)
+  {
+    currentPiece->rotateCCW();
+    rotated=-1;
+  }
+  else if (yellowPressed)
+  {
+    currentPiece->rotateCW();
+    rotated=1;
+  }
+
+  if (digitalRead(47) == LOW)
+  {
+    currentMoveDelay += elapsedTime;
+    if (currentMoveDelay >= moveDelay)
+    {
+      currentMoveDelay = 0;
+      dx --;
+    }
+  }
+
+  if (digitalRead(50) == LOW)
+  {
+    currentMoveDelay += elapsedTime;
+    if (currentMoveDelay >= moveDelay)
+    {
+      currentMoveDelay = 0;
+      dx ++;
+    }
+  }
+
+  if (digitalRead(48) == LOW)
+  {
+    dropTime = fastTime;
+  }
+  else
+  {
+    dropTime = normalTime;
+  }
+
+  currentPiece->x += dx;
+  
+  //Check side collisions for position first, then rotation.
+  if(checkSideCollisions())
+  {
+    currentPiece->x -= dx;
+  }
+
+  if(checkSideCollisions())
+  {
+    if (rotated == -1)
+    {
+      currentPiece->rotateCW();
+    }
+    else if (rotated == 1)
+    {
+      currentPiece->rotateCCW();
+    }
+  }
+  
+  currentTime += elapsedTime;
+
+  if (currentTime >= dropTime)
+  {
+    currentTime = 0;
+    
+    currentPiece->y += 1;
+    
+    if (checkLanding(currentPiece))
+    {
+      currentPiece->y -= 1;
+      storePiece();
+      //Check clear lines
+      clearLines();
+
+      delete currentPiece;
+      currentPiece = nextPiece;
+      nextPiece = makeRandomPiece(MATRIX_WIDTH / 2, 0, MATRIX_X, MATRIX_Y);
+      
+      return 1;
+    }
+  }
+  return 0;
+}
+
+byte Matrix::clearLines()
+{
+  char cleared = 0, y, x;
+
+  for (y = MATRIX_HEIGHT - 1; y >= 0; y--)
+  {
+    if (cleared)
+    {
+      for (x = 0; x < MATRIX_WIDTH; x++)
+      {
+        matrix[y + cleared][x] = matrix[y][x];
+      }
+    }
+    
+    cleared += checkLine(y);
+  }
+}
+
+byte Matrix::checkLine(char y)
+{
+  char x;
+
+  for (x = 0; x < MATRIX_WIDTH; x++)
+  {
+    if (! matrix[y][x])
+    {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+void Matrix::storePiece()
+{
+  char c, r, x, y;
+  
+  for (x = currentPiece->x, c = 0; x < currentPiece->x + currentPiece->frameWidth; x++, c++)
+  {
+    for (y = currentPiece->y, r = 0; y < currentPiece->y + currentPiece->frameHeight; y++, r++)
+    {
+      if (currentPiece->frames[currentPiece->index*currentPiece->frameWidth*currentPiece->frameHeight + r*currentPiece->frameWidth + c])
+      {
+        matrix[y][x] = 1;
       }
     }
   }
 }
 
-Matrix * makeMatrix(Color bgColor)
+void Matrix::draw(byte * pixels)
 {
-  Matrix * matrix = (Matrix * ) calloc(1, sizeof(Matrix));
-  Color color;
-
-  color.longColor = 0x202020FF;
-  
-  matrix->bgColor = bgColor;
-  matrix->pieceColor = color;
-  matrix->fastTime = 500;
-  matrix->normalTime = 500;
-
-  return matrix;
-}
-
-void drawMatrix(byte * pixels, Matrix * matrix)
-{
-  char x, y;
+  char r, c;
 
   Color color;
   color.longColor = 0x202020FF;
 
-  drawRect(0, 0, 16, 16, color);
+//  drawRect(0, 0, 16, 16, color);
 
-//  for (x = MATRIX_X; x < MATRIX_X + MATRIX_WIDTH; x++)
-//  {
-//    for (y = MATRIX_Y; y < MATRIX_Y + MATRIX_HEIGHT; y++)
-//    {
-//      if (matrix->matrix[y - MATRIX_Y][x - MATRIX_X])
-//      {
-//        setPixel(x, y, matrix->pieceColor);
-//      }
-//    }
-//  }
+  for (c = 0; c < MATRIX_WIDTH; c++)
+  {
+    for (r = 0; r < MATRIX_HEIGHT; r++)
+    {
+      if (matrix[r][c])
+      {
+        setPixel(c + MATRIX_X, r + MATRIX_Y, pieceColor);
+      }
+    }
+  }
+
+  currentPiece->draw(pixels);
 }
 
 

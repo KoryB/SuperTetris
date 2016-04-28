@@ -23,31 +23,31 @@
 
 typedef enum {I, O, J, L, S, Z, T} pieceType;
 
-typedef struct Piece
+class Piece
 {
-  pieceType ptype;
-  char * frames;
-  char frameWidth;
-  char frameHeight;
-  char numFrames;
-  char index;
+  public:
+    Piece(char x, char y, char ox, char oy, pieceType ptype);
+    ~Piece();
 
-  char ox;
-  char oy;
+    void update();
+    void draw(byte * pixels);
+    byte rotateCW();
+    byte rotateCCW();
+    
+    pieceType ptype;
+    char * frames;
+    char frameWidth;
+    char frameHeight;
+    char numFrames;
+    char index;
+  
+    char ox;
+    char oy;
+  
+    char x;
+    char y;
+};
 
-  char x;
-  char y;
-} Piece;
-
-//Makes don't set the origin! Do eet yourself for now
-Piece * makeI(char x, char y, Piece * piece);
-Piece * makeO(char x, char y, Piece * piece);
-Piece * makeJ(char x, char y, Piece * piece);
-Piece * makeL(char x, char y, Piece * piece);
-Piece * makeS(char x, char y, Piece * piece);
-Piece * makeZ(char x, char y, Piece * piece);
-Piece * makeT(char x, char y, Piece * piece);
-Piece * makeRandom(char x, char y, Piece * piece);
-void drawPiece(byte * pixels, Piece * piece);
+Piece * makeRandomPiece(char x, char y, char ox, char oy);
 
 #endif

@@ -5,26 +5,38 @@
 #define MATRIX_WIDTH 10
 #define MATRIX_X 3
 #define MATRIX_Y 0
+#define DELAY 32
 
-typedef struct Matrix
+class Matrix
 {
-  byte matrix[MATRIX_HEIGHT][MATRIX_WIDTH];
-  Color bgColor;
-  Color pieceColor;
+  public:
+    Matrix(Color bgColor);
 
-  unsigned long currentTime;
-  unsigned long fastTime;
-  unsigned long normalTime;
+    byte checkPieceAllowed(Piece * piece);
+    byte checkSideCollisions();
+    byte isFilled(char x, char y);
+    byte isLanding(char x, char y);
+    byte checkLanding(Piece * piece);
+    byte clearLines();
+    byte checkLine(char y);
+    void storePiece();
+    byte update(unsigned long elapsedTime);
+    void draw(byte * pixels);
   
-} Matrix;
+    byte matrix[MATRIX_HEIGHT][MATRIX_WIDTH];
+    Color bgColor;
+    Color pieceColor;
+  
+    unsigned long currentTime;
+    unsigned long fastTime;
+    unsigned long normalTime;
+    unsigned long dropTime;
+    unsigned long const moveDelay = DELAY;
+    unsigned long currentMoveDelay;
 
-byte checkPieceAllowed(struct Matrix * matrix, Piece * piece); //Returns 1 if not blocked, assumes origin is this matrix's pos
-byte isValidPosition(struct Matrix * matrix, char x, char y);
-byte isLanding(struct Matrix * matrix, char x, char y);
-byte clearRows(Piece * piece); //The piece last placed
-void storePiece(Matrix * matrix, Piece * piece);
-byte updateMatrix(Matrix * matrix, Piece * piece, unsigned long elapsedTime);
-Matrix * makeMatrix(Color bgColor);
-void drawMatrix(byte * pixels, Matrix * matrix);
+    Piece * currentPiece;
+    Piece * nextPiece;
+  
+};
 
 #endif

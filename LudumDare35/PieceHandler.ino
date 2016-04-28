@@ -95,9 +95,9 @@ char zFrames[] =
     0, 1, 1,
     0, 0, 0,
   
-    0, 1, 0,
-    0, 1, 1,
     0, 0, 1,
+    0, 1, 1,
+    0, 1, 0,
   
     0, 0, 0,
     1, 1, 0,
@@ -127,177 +127,148 @@ char tFrames[] =
     0, 1, 0
 };
 
-Piece * makeI(char x, char y, Piece * piece)
+Piece::Piece(char x, char y, char ox, char oy, pieceType ptype)
 {
-  piece->ptype = I;
-  piece->frames = iFrames;
-  piece->frameWidth = IWIDTH;
-  piece->frameHeight = IHEIGHT;
-  piece->numFrames = PFRAMES;
-  piece->index = 0;
-  piece->x = x;
-  piece->y = y;
+  this->ox = ox;
+  this->oy = oy;
+  this->x = x;
+  this->y = y;
+  this->ptype = ptype;
+  index = 0;
 
-  return piece;
-}
-
-Piece * makeO(char x, char y, Piece * piece)
-{
-  piece->ptype = O;
-  piece->frames = oFrames;
-  piece->frameWidth = OWIDTH;
-  piece->frameHeight = OHEIGHT;
-  piece->numFrames = OFRAMES;
-  piece->index = 0;
-  piece->x = x;
-  piece->y = y;
-
-  return piece;
-}
-
-Piece * makeJ(char x, char y, Piece * piece)
-{
-  piece->ptype = J;
-  piece->frames = jFrames;
-  piece->frameWidth = PWIDTH;
-  piece->frameHeight = PHEIGHT;
-  piece->numFrames = PFRAMES;
-  piece->index = 0;
-  piece->x = x;
-  piece->y = y;
-
-  return piece;
-}
-
-Piece * makeL(char x, char y, Piece * piece)
-{
-  piece->ptype = L;
-  piece->frames = lFrames;
-  piece->frameWidth = PWIDTH;
-  piece->frameHeight = PHEIGHT;
-  piece->numFrames = PFRAMES;
-  piece->index = 0;
-  piece->x = x;
-  piece->y = y;
-
-  return piece;
-}
-
-Piece * makeS(char x, char y, Piece * piece)
-{
-  piece->ptype = S;
-  piece->frames = sFrames;
-  piece->frameWidth = PWIDTH;
-  piece->frameHeight = PHEIGHT;
-  piece->numFrames = PFRAMES;
-  piece->index = 0;
-  piece->x = x;
-  piece->y = y;
-
-  return piece;
-}
-
-Piece * makeZ(char x, char y, Piece * piece)
-{
-  piece->ptype = Z;
-  piece->frames = zFrames;
-  piece->frameWidth = PWIDTH;
-  piece->frameHeight = PHEIGHT;
-  piece->numFrames = PFRAMES;
-  piece->index = 0;
-  piece->x = x;
-  piece->y = y;
-
-  return piece;
-}
-
-Piece * makeT(char x, char y, Piece * piece)
-{
-  piece->ptype = T;
-  piece->frames = tFrames;
-  piece->frameWidth = PWIDTH;
-  piece->frameHeight = PHEIGHT;
-  piece->numFrames = PFRAMES;
-  piece->index = 0;
-  piece->x = x;
-  piece->y = y;
-
-  return piece;
-}
-
-Piece * makeRandom(char x, char y, Piece * piece)
-{
-  int choose = random(NUM_PIECES);
-
-  switch (choose)
+  switch(this->ptype)
   {
-    case IINDEX:
-      return makeI(x, y, piece);
+    case I:
+      frames = iFrames;
+      frameWidth = IWIDTH;
+      frameHeight = IHEIGHT;
+      numFrames = PFRAMES;
       break;
-
-    case OINDEX:
-      return makeO(x, y, piece);
+    case O:
+      frames = oFrames;
+      frameWidth = OWIDTH;
+      frameHeight = OHEIGHT;
+      numFrames = OFRAMES;
       break;
-
-    case JINDEX:
-      return makeJ(x, y, piece);
+    case J:
+      frames = jFrames;
+      frameWidth = PWIDTH;
+      frameHeight = PHEIGHT;
+      numFrames = PFRAMES;
       break;
-
-    case LINDEX:
-      return makeL(x, y, piece);
+    case L:
+      frames = lFrames;
+      frameWidth = PWIDTH;
+      frameHeight = PHEIGHT;
+      numFrames = PFRAMES;
       break;
-
-    case SINDEX:
-      return makeS(x, y, piece);
+    case S:
+      frames = sFrames;
+      frameWidth = PWIDTH;
+      frameHeight = PHEIGHT;
+      numFrames = PFRAMES;
+    case Z:
+      frames = zFrames;
+      frameWidth = PWIDTH;
+      frameHeight = PHEIGHT;
+      numFrames = PFRAMES;
       break;
-
-    case ZINDEX:
-      return makeZ(x, y, piece);
-      break;
-
-    case TINDEX:
-      return makeT(x, y, piece);
-      break;
-
+    case T:
     default:
-      return makeT(x, y, piece);
-      break;    
+      frames = tFrames;
+      frameWidth = PWIDTH;
+      frameHeight = PHEIGHT;
+      numFrames = PFRAMES;
+      break;
   }
 }
 
-byte rotatePieceCW(Piece * piece)
+Piece::~Piece()
 {
-  piece->index++;
-  if (piece->index >= piece->numFrames)
+//  delete frames;
+}
+
+byte Piece::rotateCW()
+{
+  index++;
+  if (index >= numFrames)
   {
-    piece->index = 0;
+    index = 0;
   }
+
+  return index;
 }
 
-byte rotatePieceCCW(Piece * piece)
+byte Piece::rotateCCW()
 {
-  piece->index--;
-  if (piece->index < 0)
+  index--;
+  if (index < 0)
   {
-    piece->index = piece->numFrames - 1;
+    index = numFrames - 1;
   }
+
+  return index;
 }
 
-void drawPiece(byte * pixels, Piece * piece)
+void Piece::draw(byte * pixels)
 {
-  static char c, r, x, y;
+  static char c, r, tx, ty;
   Color color;
   color.longColor = 0x202020FF;
 
-  for (x = piece->ox + piece->x, c = 0; x < piece->ox + piece->x + piece->frameWidth; x++, c++)
+  for (tx = ox + x, c = 0; tx < ox + x + frameWidth; tx++, c++)
   {
-    for (y = piece->oy + piece->y, r = 0; y < piece->oy + piece->y + piece->frameHeight; y++, r++)
+    for (ty = oy + y, r = 0; ty < oy + y + frameHeight; ty++, r++)
     {
-      if (piece->frames[piece->index*piece->frameWidth*piece->frameHeight + r*piece->frameWidth + c])
+      if (frames[index*frameWidth*frameHeight + r*frameWidth + c])
       {
-        setPixel(x, y, color);
+        setPixel(tx, ty, color);
       }
     }
   }
+}
+
+Piece * makeRandomPiece(char x, char y, char ox, char oy)
+{
+  int choose = random(NUM_PIECES);
+
+  Serial.println(choose);
+
+  return new Piece(x, y, ox, oy, (pieceType) choose);
+
+  /*switch (choose)
+  {
+    case IINDEX:
+      return new makeI(x, y, piece);
+      break;
+
+    case OINDEX:
+      return new makeO(x, y, piece);
+      break;
+
+    case JINDEX:
+      return new makeJ(x, y, piece);
+      break;
+
+    case LINDEX:
+      return new makeL(x, y, piece);
+      break;
+
+    case SINDEX:
+      return new makeS(x, y, piece);
+      break;
+
+    case ZINDEX:
+      return new makeZ(x, y, piece);
+      break;
+
+    case TINDEX:
+      return new makeT(x, y, piece);
+      break;
+
+    default:
+      return new makeT(x, y, piece);
+      break;    
+  }*/
 }
 
