@@ -10,7 +10,7 @@
 class Matrix
 {
   public:
-    Matrix(Color bgColor);
+    Matrix(Color bgColor, byte (* inputs)[6][4]);
 
     byte checkPieceAllowed(Piece * piece);
     byte checkSideCollisions();
@@ -19,6 +19,8 @@ class Matrix
     byte checkLanding(Piece * piece);
     byte clearLines();
     byte checkLine(char y);
+    byte checkLineOther(char y);
+    byte doClear(char y, char cleared);
     void storePiece();
     byte update(unsigned long elapsedTime);
     void draw(byte * pixels);
@@ -32,10 +34,15 @@ class Matrix
     unsigned long normalTime;
     unsigned long dropTime;
     unsigned long const moveDelay = DELAY;
+    unsigned long const initialMoveDelay = DELAY*3;
     unsigned long currentMoveDelay;
+
+    byte (* inputs)[6][4];
 
     Piece * currentPiece;
     Piece * nextPiece;
+
+    Matrix * otherMatrix;
   
 };
 

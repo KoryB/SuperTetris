@@ -1,6 +1,7 @@
 #include "WS2812.h"
 #include "Pieces.h"
 #include "Matrix.h"
+#include "InputHandler.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdlib.h>
@@ -16,10 +17,10 @@ unsigned long lastTime = 0;
 unsigned long elapsedTime = 0;
 unsigned long lastDelay = 0;
 Matrix * testMatrix;
+Matrix * playerOneMatrix;
+Matrix * playerTwoMatrix;
 
 int count = 0;
-
-byte redPressed = 0, yellowPressed = 0, redDown = 0, yellowDown = 0, redReleased = 0, yellowReleased = 0;
 
 //Initialization
 void setup() 
@@ -27,44 +28,21 @@ void setup()
   char c, r, x, y;
                 
   pinMode(WS2812_pin, OUTPUT);
-  
-  //player 1 (left player)
 
-  //red
-  pinMode(38,INPUT);
-  //yellow
-  pinMode(39,INPUT);
-
-  //down
-  pinMode(40,INPUT);
-  //right
-  pinMode(41,INPUT);
-  //up
-  pinMode(42,INPUT);
-  //left
-  pinMode(43,INPUT);
- 
-
-  
-  // player 2 (right player)
-  //yellow
-  pinMode(46,INPUT);
-  //left
-  pinMode(47,INPUT);
-  //down
-  pinMode(48,INPUT);
-  //red
-  pinMode(49,INPUT);
-  //right
-  pinMode(50,INPUT);
-  //up
-  pinMode(51,INPUT);
+  setupInputs();
   
   Serial.begin(9600);
 
-  randomSeed(analogRead(A0));
-  
-  testMatrix = new Matrix(color);
+  randomSeed(analogRead(A7));
+
+  color.longColor = 0x200000FF;
+  playerOneMatrix = new Matrix(color, &playerOneInputs);
+
+  color.longColor = 0x001710FF;  
+  playerTwoMatrix = new Matrix(color, &playerTwoInputs);
+
+  playerOneMatrix->otherMatrix = playerTwoMatrix;
+  playerTwoMatrix->otherMatrix = playerOneMatrix;
   
 }//setup
 
@@ -77,53 +55,26 @@ void loop()
 
   handleInput();
 
-  testMatrix->update(elapsedTime);
+  if (playerOneInputs[BYELLOW][PRESS])
+  {
+    Serial.println("We in there");
+  }
+
+  playerOneMatrix->update(elapsedTime);
+  playerTwoMatrix->update(elapsedTime);
 
   color.longColor = 0x000000FF;
   drawRect(0, 0, 16, 16, color);
-  testMatrix->draw(RGB);
+
+  color.longColor = 0x010101FF;
+  drawRect(MATRIX_X, MATRIX_Y, MATRIX_WIDTH, MATRIX_HEIGHT, color);
+
+  setBlendMode(ADD_BLEND);
+  playerOneMatrix->draw(RGB);
+  playerTwoMatrix->draw(RGB);
+  setBlendMode(NO_BLEND);
   RGB_update(-1,0,0,0);//LED#, RED, GREEN, BLUE
   lastDelay = (elapsedTime - lastDelay > DELAY) ? 0 : (DELAY - elapsedTime + lastDelay);
   delay(lastDelay);
 }//loop 
-
-void handleInput()
-{
-  //TODO: Add button class
-  redPressed = yellowPressed = redReleased = yellowReleased = 0;
-
-  if (digitalRead(49) == LOW)
-  {
-    if (!redDown)
-    {
-      redPressed = 1;
-    }
-    redDown = 1;
-  }
-  else
-  {
-    if (redDown)
-    {
-      redReleased = 1;
-    }
-    redDown = 0;
-  }
-  
-  if (digitalRead(46) == LOW)
-  {
-    if (!yellowDown)
-    {
-      yellowPressed = 1;
-    }
-    yellowDown = 1;
-  } 
-  else
-  {
-    if (yellowDown)
-    {
-      yellowReleased = 1;
-    }
-    yellowDown = 0;
-  }
-}
 

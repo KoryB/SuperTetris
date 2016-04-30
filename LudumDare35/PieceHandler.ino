@@ -26,9 +26,9 @@ char iFrames[] =
 
 char oFrames[] = 
 { 
-    0, 1, 1, 0,
-    0, 1, 1, 0,
-    0, 0, 0, 0
+    1, 1, 0,
+    1, 1, 0,
+    0, 0, 0
 };
 
 char jFrames[] = 
@@ -210,11 +210,9 @@ byte Piece::rotateCCW()
   return index;
 }
 
-void Piece::draw(byte * pixels)
+void Piece::draw(byte * pixels, Color color)
 {
   static char c, r, tx, ty;
-  Color color;
-  color.longColor = 0x202020FF;
 
   for (tx = ox + x, c = 0; tx < ox + x + frameWidth; tx++, c++)
   {
@@ -231,8 +229,6 @@ void Piece::draw(byte * pixels)
 Piece * makeRandomPiece(char x, char y, char ox, char oy)
 {
   int choose = random(NUM_PIECES);
-
-  Serial.println(choose);
 
   return new Piece(x, y, ox, oy, (pieceType) choose);
 

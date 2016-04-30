@@ -5,7 +5,7 @@
 #define IHEIGHT 4
 #define PWIDTH 3
 #define PHEIGHT 3
-#define OWIDTH 4
+#define OWIDTH 3
 #define OHEIGHT 3
 
 #define PFRAMES 4
@@ -30,7 +30,7 @@ class Piece
     ~Piece();
 
     void update();
-    void draw(byte * pixels);
+    void draw(byte * pixels, Color color);
     byte rotateCW();
     byte rotateCCW();
     

@@ -1,19 +1,16 @@
 #include "Pieces.h"
 #include "WS2812.h"
 #include "Matrix.h"
+#include "InputHandler.h"
 #include <stdlib.h>
 
-Matrix::Matrix(Color bgColor)
+Matrix::Matrix(Color color, byte (* inputs)[6][4])
 {
   char r, c;
-  Color color;
-
-  color.longColor = 0x202020FF;
   
-  bgColor = bgColor;
   pieceColor = color;
   fastTime = DELAY;
-  normalTime = DELAY * 6;
+  normalTime = DELAY * 20;
   currentMoveDelay = 0;
 
   dropTime = normalTime;
@@ -25,6 +22,8 @@ Matrix::Matrix(Color bgColor)
       matrix[r][c] = 0;
     }
   }
+
+  this->inputs = inputs;
 
   currentPiece = makeRandomPiece(MATRIX_WIDTH / 2, 0, MATRIX_X, MATRIX_Y);
   nextPiece = makeRandomPiece(MATRIX_WIDTH / 2, 0, MATRIX_X, MATRIX_Y);
@@ -52,7 +51,6 @@ byte Matrix::isLanding(char c, char r)
 {
   if (r >= MATRIX_HEIGHT)
   {
-    Serial.println("Landing!");
     return 1;
   }
 
@@ -87,40 +85,46 @@ byte Matrix::isFilled(char x, char y)
 
 byte Matrix::update(unsigned long elapsedTime)
 {
-  char r, c, x, y, dx=0, rotated=0;
+  char r, c, x, y, dx=0, rotated=0, left, right;
   //Check inputs to move
-  if (redPressed)
+  if ((*inputs)[BRED][PRESS])
   {
     currentPiece->rotateCCW();
     rotated=-1;
   }
-  else if (yellowPressed)
+  else if ((*inputs)[BYELLOW][PRESS])
   {
     currentPiece->rotateCW();
     rotated=1;
   }
 
-  if (digitalRead(47) == LOW)
+  left = (*inputs)[JLEFT][DOWN];
+  right = (*inputs)[JRIGHT][DOWN];
+
+  if (left || right)
   {
-    currentMoveDelay += elapsedTime;
-    if (currentMoveDelay >= moveDelay)
+    if (currentMoveDelay == 0 || (currentMoveDelay >= initialMoveDelay && currentMoveDelay >= moveDelay))
     {
-      currentMoveDelay = 0;
-      dx --;
+      currentMoveDelay = initialMoveDelay * (currentMoveDelay != 0);
+      
+      if (left)
+      {
+        dx --;
+      }
+      else
+      {
+        dx ++;
+      }
     }
+    
+    currentMoveDelay += elapsedTime;
+  }
+  else
+  {
+    currentMoveDelay = 0;
   }
 
-  if (digitalRead(50) == LOW)
-  {
-    currentMoveDelay += elapsedTime;
-    if (currentMoveDelay >= moveDelay)
-    {
-      currentMoveDelay = 0;
-      dx ++;
-    }
-  }
-
-  if (digitalRead(48) == LOW)
+  if ((*inputs)[JDOWN][DOWN])
   {
     dropTime = fastTime;
   }
@@ -137,7 +141,7 @@ byte Matrix::update(unsigned long elapsedTime)
     currentPiece->x -= dx;
   }
 
-  if(checkSideCollisions())
+  if(checkSideCollisions() || checkLanding(currentPiece))
   {
     if (rotated == -1)
     {
@@ -176,19 +180,49 @@ byte Matrix::update(unsigned long elapsedTime)
 
 byte Matrix::clearLines()
 {
-  char cleared = 0, y, x;
+  char cleared = 0, clearedOther = 0, y, x;
+  static char clearedArray[MATRIX_HEIGHT];
+  static char clearedOtherArray[MATRIX_HEIGHT];
+
+  for (y = 0; y < MATRIX_HEIGHT; ++y)
+  {
+    clearedArray[y] = checkLine(y);
+
+    if (clearedArray[y])
+    {
+      clearedOtherArray[y] = checkLineOther(y);
+    }
+    else
+    {
+      clearedOtherArray[y] = 0;
+    }
+    
+//    Serial.print(clearedOtherArray[y], DEC); Serial.print(", ");
+  }
+
+//    Serial.println();
+//  Serial.println(clearedOtherArray, DEC);
 
   for (y = MATRIX_HEIGHT - 1; y >= 0; y--)
   {
-    if (cleared)
+    doClear(y, cleared);
+    otherMatrix->doClear(y, clearedOther);
+
+    cleared += clearedArray[y];
+    clearedOther += clearedOtherArray[y];
+  }
+}
+
+byte Matrix::doClear(char y, char cleared)
+{
+  char x;
+  
+  if (cleared)
+  {
+    for (x = 0; x < MATRIX_WIDTH; x++)
     {
-      for (x = 0; x < MATRIX_WIDTH; x++)
-      {
-        matrix[y + cleared][x] = matrix[y][x];
-      }
+      matrix[y + cleared][x] = matrix[y][x];
     }
-    
-    cleared += checkLine(y);
   }
 }
 
@@ -199,6 +233,47 @@ byte Matrix::checkLine(char y)
   for (x = 0; x < MATRIX_WIDTH; x++)
   {
     if (! matrix[y][x])
+    {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+byte Matrix::checkLineOther(char y)
+{
+  char x, py, px; 
+
+  static byte rowBuffer[MATRIX_WIDTH];
+
+  py = y - currentPiece->y;
+
+  //build buffer
+  for (x = 0; x < MATRIX_WIDTH; ++x)
+  {
+    if (py >= 0 && py < currentPiece->frameHeight)
+    {
+      px = x - currentPiece->x;
+  
+      if (px < 0 || px >= currentPiece->frameWidth)
+      {
+        rowBuffer[x] = 0; 
+      }
+      else
+      {
+        rowBuffer[x] = currentPiece->frames[currentPiece->index*currentPiece->frameWidth*currentPiece->frameHeight + py*currentPiece->frameWidth + px];
+      }
+    }
+    else
+    {
+      rowBuffer[x] = 0;
+    }
+  }
+
+  for (x = 0; x < MATRIX_WIDTH; ++x)
+  {
+    if ( !( matrix[y][x] == (otherMatrix->matrix[y][x] | rowBuffer[x]) ) )
     {
       return 0;
     }
@@ -227,9 +302,6 @@ void Matrix::draw(byte * pixels)
 {
   char r, c;
 
-  Color color;
-  color.longColor = 0x202020FF;
-
 //  drawRect(0, 0, 16, 16, color);
 
   for (c = 0; c < MATRIX_WIDTH; c++)
@@ -243,7 +315,7 @@ void Matrix::draw(byte * pixels)
     }
   }
 
-  currentPiece->draw(pixels);
+  currentPiece->draw(pixels, pieceColor);
 }
 
 
